@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Productivity Coach</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background:#f8fafc; }
+  </style>
+</head>
+<body class="p-6 min-h-screen">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Student Productivity Coach</h1>
+      <button id="exportBtn" class="bg-emerald-600 text-white px-4 py-2 rounded">Download CSV</button>
+    </header>
+
+    <!-- NATURAL LANGUAGE INPUT -->
+    <div class="bg-white p-4 rounded-xl shadow space-y-3">
+      <textarea id="nlInput" rows="4" class="w-full border p-3 rounded"
+        placeholder="Describe your day in natural language (e.g., Studied 3 hours, slept 6 hours, used phone 4 hours, played games 1 hour, felt stressed but focused)."></textarea>
+      <button id="analyzeBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Analyze My Day</button>
+      <p id="statusText" class="text-sm text-slate-500"></p>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="bg-white p-4 rounded-xl shadow grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <p class="text-slate-500">Productivity Score</p>
+        <p id="scoreText" class="text-3xl font-bold">—</p>
+      </div>
+      <div>
+        <p class="text-slate-500">Today’s Label</p>
+        <p id="labelText" class="text-2xl font-semibold">—</p>
+      </div>
+      <div>
+        <p class="text-slate-500">Trend</p>
+        <p id="trendText" class="text-xl font-medium">—</p>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="bg-white p-4 rounded-xl shadow">
+      <canvas id="trendChart" height="120"></canvas>
+    </div>
+
+    <!-- TABLE -->
+    <div class="bg-white p-4 rounded-xl shadow overflow-x-auto">
+      <table class="min-w-full text-sm border">
+        <thead class="bg-slate-100">
+          <tr>
+            <th class="p-2 border">Date</th>
+            <th class="p-2 border">Score</th>
+            <th class="p-2 border">Label</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const GEMINI_KEY = "YOUR_GEMINI_API_KEY"; // 🔐 put your key here
+    const API_URL = "http://localhost:8000/predict"; // 🔁 your ML backend
+    const STORAGE_KEY = "productivity_logs_nlp";
+
+    let logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let chart = null;
+
+    async function extractWithGemini(text) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AIzaSyBUZgOUuj7a88pQZeGPRrGK-ygOXPsKTl0}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `Extract the following fields as JSON numbers from this text:
+                study_hours_per_day, sleep_hours, phone_usage_hours, social_media_usage,
+                youtube_usage, gaming_hours, stress_level, focus_score, attendance_percentage,
+                exercise_minutes, coffee_intake, assignments_completed, final_grade.
+                If a value is missing, return null and ask for the missing value,
+		Repeat until all values are recieved. Text: """${text}"""`
+              }]
+            }]
+          })
+        }
+      );
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    async function analyzeDay() {
+      const text = nlInput.value.trim();
+      if (!text) return alert("Describe your day first.");
+
+      statusText.textContent = "Extracting features with Gemini…";
+      const features = await extractWithGemini(text);
+      if (!features) return alert("Failed to extract structured data.");
+
+      statusText.textContent = "Sending to ML model…";
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(features)
+      });
+      if (!res.ok) return alert("Prediction failed.");
+      const out = await res.json();
+
+      const entry = {
+        date: new Date().toLocaleString(),
+        score: out.productivity_score,
+        label: out.label
+      };
+      logs.push(entry);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+
+      scoreText.textContent = Number(out.productivity_score).toFixed(2);
+      labelText.textContent = out.label;
+      updateTrend();
+      renderTable();
+      renderChart();
+      statusText.textContent = "Done ✓";
+      nlInput.value = "";
+    }
+
+    function updateTrend() {
+      if (logs.length < 2) { trendText.textContent = "—"; return; }
+      const prev = logs[logs.length - 2].score;
+      const curr = logs[logs.length - 1].score;
+      trendText.textContent = curr >= prev ? "Improving 📈" : "Declining 📉";
+    }
+
+    function renderTable() {
+      tableBody.innerHTML = "";
+      logs.forEach(r => {
+        tableBody.innerHTML += `
+          <tr>
+            <td class="p-2 border">${r.date}</td>
+            <td class="p-2 border">${Number(r.score).toFixed(2)}</td>
+            <td class="p-2 border">${r.label}</td>
+          </tr>`;
+      });
+    }
+
+    function renderChart() {
+      const labels = logs.map(l => l.date);
+      const data = logs.map(l => Number(l.score));
+      if (chart) chart.destroy();
+      chart = new Chart(trendChart, {
+        type: "line",
+        data: { labels, datasets: [{ data, tension: 0.3 }] },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { x: { display: false } }
+        }
+      });
+    }
+
+    exportBtn.onclick = () => {
+      if (!logs.length) return alert("No data");
+      const headers = ["date","score","label"];
+      const rows = [headers.join(",")];
+      logs.forEach(r => rows.push([r.date, r.score, r.label].map(v => `"${v}"`).join(",")));
+      const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "productivity_logs.csv";
+      a.click();
+    };
+
+    analyzeBtn.onclick = analyzeDay;
+
+    renderTable();
+    renderChart();
+    updateTrend();
+  </script>
+</body>
+</html>
