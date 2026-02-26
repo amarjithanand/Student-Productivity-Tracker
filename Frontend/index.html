@@ -60,9 +60,12 @@
       </table>
     </div>
   </div>
+
 <script>
-  const OPENAI_KEY = "YOUR_OPENAI_API_KEY";   // 🔴 Replace with your key
-  const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+  // 🔵 Replace with your Cohere API key
+  const COHERE_KEY = "OPJ5W3QIS98JY4bls7TqzwJ2v4DWES7X3B5BBXDg";
+  const COHERE_URL = "https://api.cohere.com/v2/chat";
+
   const API_URL = "http://localhost:8000/predict";
   const STORAGE_KEY = "productivity_logs_nlp";
 
@@ -71,8 +74,8 @@
 
   function fillBestDefaults(obj) {
     const defaults = {
-      study_hours_per_day: 6,
-      sleep_hours: 8,
+      study_hours_per_day: 6.75,
+      sleep_hours: 9.25,
       phone_usage_hours: 1,
       social_media_hours: 0,
       youtube_hours: 0.5,
@@ -110,22 +113,37 @@
     }
     return filled;
   }
+async function extractWithCohere(text) {
+  try {
+    if (!text || !text.trim()) {
+      console.error("Empty input text");
+      return null;
+    }
 
-  async function extractWithChatGPT(text) {
-    try {
-      const res = await fetch(OPENAI_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENAI_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4.1-mini",
-          temperature: 0,
-          messages: [
-            { role: "system", content: "You convert daily activity text into strict JSON only." },
-            { role: "user", content: `
+    const res = await fetch("https://api.cohere.com/v2/chat", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${COHERE_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "command-a-03-2025",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: [
+              { type: "text", text: "You convert daily activity text into STRICT JSON only." }
+            ]
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `
 Return JSON with EXACT keys. Use numbers or null only.
+
 {
   "study_hours_per_day": number|null,
   "sleep_hours": number|null,
@@ -141,33 +159,43 @@ Return JSON with EXACT keys. Use numbers or null only.
   "assignments_completed": number|null,
   "final_grade": number|null
 }
-Text: """${text}"""` }
-          ]
-        })
-      });
 
-      const data = await res.json();
-      let raw = data.choices?.[0]?.message?.content || "";
-      raw = raw.replace(/```json|```/g, "").trim();
+Text: """${text}"""
+`
+              }
+            ]
+          }
+        ]
+      })
+    });
 
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("Raw LLM response:", raw);
-        return null;
-      }
-      return JSON.parse(jsonMatch[0]);
-    } catch (err) {
-      console.error("ChatGPT extraction error:", err);
+    const data = await res.json();
+    console.log("Cohere raw response:", data);
+
+    let raw = data.message?.content?.[0]?.text || "";
+
+    raw = raw.replace(/```json|```/g, "").trim();
+
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("Could not extract JSON:", raw);
       return null;
     }
+
+    return JSON.parse(jsonMatch[0]);
+
+  } catch (err) {
+    console.error("Cohere extraction error:", err);
+    return null;
   }
+}
 
   async function analyzeDay() {
     const text = nlInput.value.trim();
     if (!text) return alert("Describe your day first.");
 
-    statusText.textContent = "Extracting features with ChatGPT…";
-    let features = await extractWithChatGPT(text);
+    statusText.textContent = "Extracting features with Cohere…";
+    let features = await extractWithCohere(text);
 
     if (!features) {
       alert("LLM extraction failed. Using smart defaults for demo.");
@@ -184,36 +212,44 @@ Text: """${text}"""` }
     });
 
     const out = await res.json();
-
     const score = Number(out.productivity_score);
-if (Number.isNaN(score)) {
-  console.error("Invalid ML response:", out);
-  alert("ML returned invalid score. Check backend logs.");
-  statusText.textContent = "ML returned invalid score ❌";
-  return;
-}
-scoreText.textContent = score.toFixed(2);
-labelText.textContent = out.label || "—";
-    labelText.textContent = out.label;
+
+    if (Number.isNaN(score)) {
+      console.error("Invalid ML response:", out);
+      alert("ML returned invalid score. Check backend logs.");
+      statusText.textContent = "ML returned invalid score ❌";
+      return;
+    }
+
+    scoreText.textContent = score.toFixed(2);
+    labelText.textContent = out.label || "—";
 
     logs.push({
       date: new Date().toLocaleString(),
-      score: out.productivity_score,
+      score: score,
       label: out.label
     });
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+
     updateTrend();
     renderTable();
     renderChart();
+
     statusText.textContent = "Done ✓ (Missing values auto-filled if any)";
     nlInput.value = "";
   }
 
   function updateTrend() {
-    if (logs.length < 2) { trendText.textContent = "—"; return; }
+    if (logs.length < 2) {
+      trendText.textContent = "—";
+      return;
+    }
+
     trendText.textContent =
-      logs.at(-1).score >= logs.at(-2).score ? "Improving 📈" : "Declining 📉";
+      logs.at(-1).score >= logs.at(-2).score
+        ? "Improving 📈"
+        : "Declining 📉";
   }
 
   function renderTable() {
@@ -231,18 +267,33 @@ labelText.textContent = out.label || "—";
   function renderChart() {
     const labels = logs.map(l => l.date);
     const data = logs.map(l => Number(l.score));
+
     if (chart) chart.destroy();
+
     chart = new Chart(trendChart, {
       type: "line",
-      data: { labels, datasets: [{ data, tension: 0.3 }] },
-      options: { plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+      data: {
+        labels,
+        datasets: [{
+          data,
+          tension: 0.3
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false } }
+      }
     });
   }
 
   exportBtn.onclick = () => {
     if (!logs.length) return alert("No data");
+
     const rows = [["date","score","label"].join(",")];
-    logs.forEach(r => rows.push([r.date, r.score, r.label].map(v => `"${v}"`).join(",")));
+    logs.forEach(r =>
+      rows.push([r.date, r.score, r.label].map(v => `"${v}"`).join(","))
+    );
+
     const blob = new Blob([rows.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -251,6 +302,7 @@ labelText.textContent = out.label || "—";
   };
 
   analyzeBtn.onclick = analyzeDay;
+
   renderTable();
   renderChart();
   updateTrend();
