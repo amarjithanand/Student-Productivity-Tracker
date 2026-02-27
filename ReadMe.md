@@ -11,6 +11,7 @@ It combines natural language processing, supervised learning, optimized deployme
 ## 🚀 Live System
 
 Frontend: https://amarjithanand.github.io/student-productivity-tracker/Frontend
+
 Backend API: https://student-productivity-backend.onrender.com/predict
 
 ---
@@ -214,8 +215,8 @@ Instead of relying on secondary LLM summaries:
 
 ### Clone Repository
 
-git clone https://github.com/yourusername/habitscope.git  
-cd habitscope  
+git clone https://github.com/amarjithanand/student-productivity-tracker.git  
+cd student-productivity-tracker
 
 ---
 
@@ -246,7 +247,7 @@ Ensure API_URL points to local backend during development.
 
 ## 📁 Project Structure
 
-habitscope/  
+student-productivity-tracker/  
 │  
 ├── Backend/  
 │   ├── app.py  
@@ -274,7 +275,7 @@ habitscope/
 
 ## 👤 Author
 
-Amarjith  
+Amarjith Anand 
 MCA Student | Entry Level Data Scientist  
 
 ---
