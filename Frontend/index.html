@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Student Productivity Coach</title>
+<title>Student Productivity Coach | Amarjith Anand</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -110,7 +110,7 @@ button{
 
 <!-- TOMORROW TIP -->
 <div class="bg-white p-5 rounded-xl">
-  <h2 class="text-lg font-semibold mb-2">Tip for Tomorrow</h2>
+  <h2 class="text-lg font-semibold mb-2">Tip for Future</h2>
   <p id="tomorrowTip" class="leading-relaxed text-slate-300">—</p>
 </div>
 
@@ -254,7 +254,7 @@ async function analyzeDay(){
   renderChart();
   updateTrend();
 
-  statusText.textContent = "Done ✓";
+  statusText.textContent = "Done";
   nlInput.value = "";
 }
 
