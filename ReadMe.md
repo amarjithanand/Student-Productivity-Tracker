@@ -10,7 +10,7 @@ It combines natural language processing, supervised learning, optimized deployme
 
 ## 🚀 Live System
 
-Frontend: https://amarjithanand.github.io/student-productivity-tracker/Frontend
+Frontend: https://amarjithanand.github.io/Student-Productivity-Tracker/Frontend/
 
 Backend API: https://student-productivity-backend.onrender.com/predict
 
