@@ -1,0 +1,17 @@
+{
+  "feature_order": [
+    "study_hours_per_day",
+    "sleep_hours",
+    "phone_usage_hours",
+    "social_media_hours",
+    "youtube_hours",
+    "gaming_hours",
+    "stress_level",
+    "focus_score",
+    "attendance_percentage",
+    "exercise_minutes",
+    "coffee_intake_mg",
+    "assignments_completed",
+    "final_grade"
+  ]
+}
