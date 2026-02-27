@@ -119,6 +119,21 @@ button{
   <canvas id="trendChart" height="120"></canvas>
 </div>
 
+  <!-- TABLE -->
+<div class="bg-white p-4 rounded-xl overflow-x-auto">
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr>
+        <th class="p-2">Date</th>
+        <th class="p-2">Score</th>
+        <th class="p-2">Label</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+  
 </div>
 
 <script>
@@ -266,7 +281,19 @@ function updateTrend(){
     logs.at(-1).score>=logs.at(-2).score?
     "Improving 📈":"Declining 📉";
 }
+function renderTable(){
+  tableBody.innerHTML="";
+  logs.forEach(r=>{
+    tableBody.innerHTML+=`
+      <tr>
+        <td class="p-2">${r.date}</td>
+        <td class="p-2">${r.score.toFixed(2)}</td>
+        <td class="p-2">${r.label}</td>
+      </tr>`;
+  });
+}
 
+  
 function renderChart(){
   if(chart) chart.destroy();
   chart=new Chart(trendChart,{
@@ -299,7 +326,7 @@ exportBtn.onclick=()=>{
 };
 
 analyzeBtn.onclick=analyzeDay;
-
+renderTable();
 renderChart();
 updateTrend();
 
