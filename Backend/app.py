@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from huggingface_hub import hf_hub_download
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -18,12 +19,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "pkl models")
+regressor_path = hf_hub_download(
+    repo_id="amarjithanand/student-productivity-tracker",
+    filename = "regressor.pkl"
+)
 
-REGRESSOR = joblib.load(os.path.join(MODEL_DIR, "regressor.pkl"))
-CLASSIFIER = joblib.load(os.path.join(MODEL_DIR, "classifier.pkl"))
-SCALER = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
+classifier_path = hf_hub_download(
+    repo_id="amarjithanand/student-productivity-tracker",
+    filename = "classifier.pkl"
+)
+
+scaler_path = hf_hub_download(
+    repo_id="amarjithanand/student-productivity-tracker",
+    filename = "scaler.pkl"
+)
+
+REGRESSOR = joblib.load(regressor_path)
+CLASSIFIER = joblib.load(classifier_path)
+SCALER = joblib.load(scaler_path)
+
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "pkl models")
 
 with open(os.path.join(MODEL_DIR, "preprocess.json"), "r") as f:
     PREPROCESS = json.load(f)
