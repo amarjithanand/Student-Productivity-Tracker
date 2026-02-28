@@ -308,11 +308,31 @@ async function analyzeDay(){
 
 /* ---------------- UTILITIES ---------------- */
 
-function updateTrend(){
-  if(logs.length<2) return trendText.textContent="—";
-  trendText.textContent =
-    logs.at(-1).score>=logs.at(-2).score?
-    "Improving 📈":"Declining 📉";
+function updateTrend() {
+
+  if (logs.length < 6) {
+    trendText.textContent = "Not enough data";
+    return;
+  }
+
+  // Take last 6 entries (5 past + 1 current)
+  const recent = logs.slice(-6);
+
+  const pastFive = recent.slice(0, 5);
+  const current = recent[5].score;
+
+  const avgPastFive =
+    pastFive.reduce((sum, r) => sum + r.score, 0) / pastFive.length;
+
+  if (current > avgPastFive + 0.5) {
+    trendText.textContent = "Improving 📈";
+  } 
+  else if (current < avgPastFive - 0.5) {
+    trendText.textContent = "Declining 📉";
+  } 
+  else {
+    trendText.textContent = "Stable ➖";
+  }
 }
 function renderTable(){
   tableBody.innerHTML="";
